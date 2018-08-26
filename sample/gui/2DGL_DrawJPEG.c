@@ -1,0 +1,129 @@
+/*
+*********************************************************************************************************
+*                                                uC/GUI
+*                        Universal graphic software for embedded applications
+*
+*                       (c) Copyright 2002, Micrium Inc., Weston, FL
+*                       (c) Copyright 2002, SEGGER Microcontroller Systeme GmbH
+*
+*              µC/GUI is protected by international copyright laws. Knowledge of the
+*              source code may not be used to write a similar product. This file may
+*              only be used in accordance with a license and should not be redistributed
+*              in any way. We appreciate your understanding and fairness.
+*
+----------------------------------------------------------------------
+File        : 2DGL_DrawJPG.c
+Purpose     : Example for drawing JPG files
+----------------------------------------------------------------------
+*/
+
+#include <windows.h>
+#include <stdio.h>
+
+#include "GUI.h"
+
+/*******************************************************************
+*
+*       Static functions
+*
+********************************************************************
+*/
+
+/*******************************************************************
+*
+*       _ShowJPG
+*
+* Shows the contents of a JPEG file
+*/
+static void _ShowJPEG(const char * sFilename) {
+  static U16 i=0;
+  int XSize, YSize, XPos, YPos;
+  GUI_JPEG_INFO Info;
+
+  DWORD NumBytesRead;
+  HANDLE hFile = CreateFile(sFilename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  DWORD FileSize = GetFileSize(hFile, NULL);
+  char * pFile = malloc(FileSize);
+  ReadFile(hFile, pFile, FileSize, &NumBytesRead, NULL);
+  CloseHandle(hFile);
+  GUI_ClearRect(0, 60, 799, 479);
+  GUI_JPEG_GetInfo(pFile, FileSize, &Info);
+  XSize = Info.XSize;
+  YSize = Info.YSize;
+  XPos = (XSize > 800) ?  0 : 400 - (XSize / 2);
+  YPos = (YSize > 420) ? 60 : 210 - (YSize / 2); 
+	if (!GUI_JPEG_Draw(pFile, FileSize, XPos, YPos)) {
+		GUI_Delay(200);
+	}
+
+  free(pFile);
+}
+
+void ShowGif(const void * Pgif, U32 NumBytes , int x0, int y0)
+{
+	static U16 i = 0;
+	GUI_GIF_INFO InfoGif1;
+	GUI_GIF_IMAGE_INFO InfoGif2;
+
+	GUI_GIF_GetInfo(Pgif, NumBytes, &InfoGif1);
+	if(i < InfoGif1.NumImages)
+	{
+		GUI_GIF_GetImageInfo(Pgif, NumBytes, &InfoGif2, i );
+		//if(!GUI_GIF_DrawEx(Pgif, NumBytes, x0 + InfoGif2.xPos, y0 + InfoGif2.yPos, i++))
+		if(!GUI_GIF_DrawEx(Pgif, NumBytes, 50, 100, i++))
+		{
+			 GUI_Delay(1000);
+		}
+	}
+	else
+	{
+		i = 0;
+	}    
+}
+
+/*******************************************************************
+*
+*       _DrawWindowsDirectoryBitmaps
+*
+* Iterates over all *.jpg-files of the windows directory
+*/
+static void _DrawWindowsDirectoryBitmaps(void) {
+  char acPath[_MAX_PATH];
+  char acMask[_MAX_PATH];
+  char acFile[_MAX_PATH];
+  WIN32_FIND_DATA Context;
+  HANDLE hFind;
+
+  GUI_SetBkColor(GUI_BLACK);
+  GUI_Clear();
+  GUI_SetColor(GUI_WHITE);
+  GUI_SetFont(&GUI_Font24_ASCII);
+  GUI_DispStringHCenterAt("DrawJPEG - Sample", 160, 5);
+  GUI_SetFont(&GUI_Font8x16);
+
+  GetWindowsDirectory(acPath, sizeof(acPath));
+  sprintf(acMask, "%s\\web\\wallpaper\\*.jpg", acPath);
+  hFind = FindFirstFile(acMask, &Context);
+  if (hFind != INVALID_HANDLE_VALUE) {
+    do {
+      sprintf(acFile, "%s\\web\\wallpaper\\%s", acPath, Context.cFileName);
+	  GUI_SetColor(GUI_WHITE);
+      GUI_DispStringAtCEOL(acFile, 5, 40);
+      _ShowJPEG(acFile);
+    } while (FindNextFile(hFind, &Context));
+  }
+}
+
+/*******************************************************************
+*
+*       MainTask
+*
+********************************************************************
+*/
+
+void MainTask_2dgl(void) {
+  GUI_Init();
+  while(1) {
+    _DrawWindowsDirectoryBitmaps();
+  }
+}
